@@ -1,4 +1,4 @@
-# snake-mf
+# Cat-a-Pillar
 
 A modern take on the classic Snake game, developed in Python using Pygame. **snake-mf** offers multiple difficulty levels, a fun mode with unique levels, and a highscore system to keep track of your best games. 
 ## Table of Contents 
