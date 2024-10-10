@@ -11,7 +11,6 @@ pygame.mixer.init()  # Initialize the mixer for sound
 # Screen dimensions
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
-
 # Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -34,7 +33,7 @@ matrix_font = pygame.font.SysFont('Courier', 15, bold=True)
 
 # Create the screen
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption('Cat-a-pillar © M.Fischbach')
+pygame.display.set_caption('Cat-a-Pillar © M.Fischbach')
 
 # Clock
 clock = pygame.time.Clock()
@@ -42,6 +41,10 @@ clock = pygame.time.Clock()
 # Load sounds
 menu_music = 'menu.wav'  # Ensure this file exists in the same directory
 game_music = 'game.wav'  # Ensure this file exists in the same directory
+
+# Global variables to track if 'Autism' difficulty is unlocked and used
+autism_unlocked = False
+autism_used = False
 
 # Function to get the highscore file path
 def get_highscore_file_path(mode='classic', level=None):
@@ -113,9 +116,11 @@ def is_new_highscore(score, mode='classic', level=None):
 # Difficulty levels
 difficulty_levels = {
     'Easy': {'speed': 10, 'point_value': 1, 'extra_time': 5},
-    'Medium': {'speed': 15, 'point_value': 2, 'extra_time': 4},
-    'Hard': {'speed': 20, 'point_value': 3, 'extra_time': 3},
-    'Extreme': {'speed': 25, 'point_value': 4, 'extra_time': 2}
+    'Medium': {'speed': 20, 'point_value': 2, 'extra_time': 4},
+    'Hard': {'speed': 25, 'point_value': 3, 'extra_time': 3},
+    'Harder': {'speed': 30, 'point_value': 4, 'extra_time': 2},
+    'Ridiculous': {'speed': 50, 'point_value': 6, 'extra_time': 2},
+    'Autism': {'speed': 100, 'point_value': 10, 'extra_time': 1}
 }
 
 def start_screen():
@@ -134,7 +139,7 @@ def start_screen():
         title_rect = title.get_rect(center=(SCREEN_WIDTH / 2, title_y))
         screen.blit(title, title_rect)
         
-        # Display the subtitle "by Martin Fischbach" unter dem Titel
+        # Display the subtitle "© Martin Fischbach" unter dem Titel
         subtitle = font_small.render("© Martin Fischbach", True, GREEN)
         # Positioniere das Subtitle direkt unter dem Titel mit einem Abstand von 20 Pixeln
         subtitle_rect = subtitle.get_rect(center=(SCREEN_WIDTH / 2, title_rect.bottom + 20))
@@ -164,6 +169,8 @@ def start_screen():
 
 
 def main_menu():
+    global autism_unlocked, autism_used  # Declare globals to modify them
+
     # Play menu music
     pygame.mixer.music.load(menu_music)
     pygame.mixer.music.play(-1)  # Loop indefinitely
@@ -172,16 +179,25 @@ def main_menu():
     selected = 0
     menu_options = ['Start Game', 'Fun Mode', 'View Highscores', 'Clear Highscores', 'Exit']
 
-    # For detecting the secret code
-    secret_code = [pygame.K_UP, pygame.K_UP, pygame.K_DOWN, pygame.K_DOWN,
-                   pygame.K_LEFT, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_RIGHT]
+    # Define the secret cheat code: Up, Right, Down, Left, Up, Right, Down, Left, Up, Right, Down, Left
+    secret_code = [
+        pygame.K_UP, pygame.K_RIGHT, pygame.K_DOWN, pygame.K_LEFT,
+        pygame.K_UP, pygame.K_RIGHT, pygame.K_DOWN, pygame.K_LEFT,
+        pygame.K_UP, pygame.K_RIGHT, pygame.K_DOWN, pygame.K_LEFT
+    ]
     input_sequence = []
 
     while True:
         screen.fill(BLACK)
-        title = font_large.render("SnakeMF", True, GREEN)
-        rect = title.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 6))
-        screen.blit(title, rect)
+        # **Änderung: Titel im Hauptmenü von "SnakeMF" zu "Cat-a-Pillar" geändert**
+        title = font_large.render("Cat-a-Pillar", True, GREEN)
+        title_rect = title.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 6))
+        screen.blit(title, title_rect)
+        
+        # **Änderung: Copyright-Text unter dem Titel hinzugefügt**
+        copyright_text = font_small.render("© Martin Fischbach", True, GREEN)
+        copyright_rect = copyright_text.get_rect(center=(SCREEN_WIDTH / 2, title_rect.bottom + 20))
+        screen.blit(copyright_text, copyright_rect)
 
         for idx, option in enumerate(menu_options):
             color = GREEN if idx == selected else LIGHT_GREY
@@ -198,13 +214,15 @@ def main_menu():
             if event.type == pygame.KEYDOWN:
                 # Secret code detection
                 input_sequence.append(event.key)
+                # Keep the input_sequence length manageable
+                if len(input_sequence) > len(secret_code):
+                    input_sequence.pop(0)
                 if input_sequence == secret_code:
-                    # Start Retro Mode
-                    pygame.mixer.music.stop()
-                    retro_mode()
-                    input_sequence = []
-                    pygame.mixer.music.load(menu_music)
-                    pygame.mixer.music.play(-1)
+                    # Unlock 'Autism' difficulty
+                    if not autism_unlocked:
+                        autism_unlocked = True
+                        autism_used = False
+                        message_display("Cheat Code Activated!\n'Autism' Difficulty Unlocked!", GREEN, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100)
                 elif not secret_code[:len(input_sequence)] == input_sequence:
                     input_sequence = []
 
@@ -217,7 +235,11 @@ def main_menu():
                         pygame.mixer.music.stop()
                         difficulty = select_difficulty()
                         if difficulty is not None:
-                            main(difficulty=difficulty)
+                            main(mode='classic', difficulty=difficulty)
+                            # Nach dem Spiel prüfen, ob 'Autism' gespielt wurde
+                            if difficulty == 'Autism':
+                                autism_unlocked = False  # Sperren nach einmaligem Spielen
+                                autism_used = False
                         pygame.mixer.music.load(menu_music)
                         pygame.mixer.music.play(-1)
                     elif selected == 1:
@@ -235,6 +257,7 @@ def main_menu():
                     elif selected == 4:
                         pygame.quit()
                         sys.exit()
+
 
 def main(mode='classic', level=None, difficulty=None):
     # Play game music
@@ -485,8 +508,7 @@ def main(mode='classic', level=None, difficulty=None):
             time_fraction = time_elapsed / extra_point_time  # From 0 to 1
             max_multiplier = 6  # Maximum multiplier
             min_multiplier = 3  # Minimum multiplier
-            multiplier = max_multiplier - (max_multiplier - min_multiplier) * time_fraction
-            multiplier = max(multiplier, min_multiplier)  # Ensure at least min_multiplier
+            multiplier = max(max_multiplier - (max_multiplier - min_multiplier) * time_fraction, min_multiplier)
             score += int(point_value * multiplier)
             points_since_last_extra = 0
             growing_segments.append(0)
@@ -519,6 +541,7 @@ def main(mode='classic', level=None, difficulty=None):
     pygame.mixer.music.stop()
     display_highscores(mode, level)
     main_menu()
+
 
 def retro_mode():
     # Retro Graphics Mode
@@ -616,6 +639,7 @@ def retro_mode():
     # Stop game music when returning to menu
     pygame.mixer.music.stop()
 
+
 def draw_snake(snake_block, snake_list, growing_segments):
     for idx, segment in enumerate(snake_list):
         # Calculate distance from head
@@ -638,19 +662,42 @@ def draw_snake(snake_block, snake_list, growing_segments):
         tail = snake_list[0]
         pygame.draw.rect(screen, WHITE, [tail[0], tail[1], snake_block, snake_block], border_radius=5)
 
+
 def message(msg, color, x, y):
     mesg = font_medium.render(msg, True, color)
     rect = mesg.get_rect(center=(x, y))
     screen.blit(mesg, rect)
 
+
+def message_display(msg, color, x, y):
+    """Displays a multi-line message."""
+    lines = msg.split('\n')
+    for idx, line in enumerate(lines):
+        mesg = font_medium.render(line, True, color)
+        rect = mesg.get_rect(center=(x, y + idx * 40))
+        screen.blit(mesg, rect)
+    pygame.display.update()
+    time.sleep(2)  # Display the message for 2 seconds
+
+
 def display_score(score):
     value = font_small.render("Score: " + str(score), True, WHITE)
     screen.blit(value, [10, 10])
 
+
 def select_difficulty():
+    global autism_unlocked, autism_used  # Access global variables
     selecting = True
+    # Build the list of difficulties based on whether 'Autism' is unlocked
     difficulties = list(difficulty_levels.keys())
+    if not autism_unlocked:
+        difficulties.remove('Autism')
     selected = 0
+
+    # Variables for blinking effect
+    autism_blink_visible = True
+    last_blink_time = time.time()
+    blink_interval = 0.5  # Blink every 0.5 seconds
 
     while selecting:
         screen.fill(BLACK)
@@ -659,7 +706,18 @@ def select_difficulty():
         screen.blit(title, rect)
 
         for idx, level in enumerate(difficulties):
-            color = GREEN if idx == selected else LIGHT_GREY
+            if level == 'Autism' and autism_unlocked:
+                # Handle blinking effect for 'Autism'
+                current_time = time.time()
+                if current_time - last_blink_time > blink_interval:
+                    autism_blink_visible = not autism_blink_visible
+                    last_blink_time = current_time
+                if autism_blink_visible:
+                    color = YELLOW if idx == selected else LIGHT_GREY
+                else:
+                    color = BLACK  # Invisible when not visible
+            else:
+                color = GREEN if idx == selected else LIGHT_GREY
             text = font_small.render(level, True, color)
             rect = text.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + idx * 40))
             screen.blit(text, rect)
@@ -679,6 +737,7 @@ def select_difficulty():
                     return None  # User wants to go back
                 if event.key == pygame.K_RETURN:
                     return difficulties[selected]
+
 
 def get_player_name():
     name = ""
@@ -711,6 +770,7 @@ def get_player_name():
 
     return name
 
+
 def display_highscores(mode='classic', level=None):
     highscores = load_highscores(mode, level)
     showing = True
@@ -735,13 +795,11 @@ def display_highscores(mode='classic', level=None):
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                    return  # Go back to main menu
-                else:
-                    showing = False
+                showing = False
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
 
 def select_fun_level():
     levels = [
@@ -784,6 +842,7 @@ def select_fun_level():
                     if difficulty is not None:
                         main(mode='fun', level=selected + 1, difficulty=difficulty)
 
+
 def generate_obstacles(level):
     obstacles = []
     moving_obstacles = []
@@ -820,6 +879,7 @@ def generate_obstacles(level):
         pass
     return obstacles, moving_obstacles
 
+
 class MovingObstacle:
     def __init__(self, x, y, width, height, dx, dy):
         self.rect = pygame.Rect(x, y, width, height)
@@ -838,6 +898,7 @@ class MovingObstacle:
 
     def draw(self, screen):
         pygame.draw.rect(screen, LIGHT_GREY, self.rect)
+
 
 def pause_screen():
     paused = True
@@ -868,6 +929,7 @@ def pause_screen():
                 if event.key == pygame.K_SPACE:
                     paused = False
 
+
 def winner_animation():
     duration = 2  # Duration in seconds
     start_time = time.time()
@@ -880,6 +942,7 @@ def winner_animation():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
 
 if __name__ == "__main__":
     main_menu()
